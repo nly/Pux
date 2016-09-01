@@ -14,29 +14,18 @@
 #define PHP_PUX_VERSION "1.3.1"
 #define PHP_PUX_EXTNAME "pux"
 
+#define PHP_5_0_X_API_NO		220040412
+#define PHP_5_1_X_API_NO		220051025
+#define PHP_5_2_X_API_NO		220060519
+#define PHP_5_3_X_API_NO		220090626
+#define PHP_5_4_X_API_NO		220100525
+#define PHP_5_5_X_API_NO		220121212
+#define PHP_5_6_X_API_NO		220131226
+
 
 #ifdef ZTS
 #include "TSRM.h"
 #endif
-
-extern int pux_globals_id;
-
-extern int le_mux_hash_table;
-
-// global variable structure
-ZEND_BEGIN_MODULE_GLOBALS(pux)
-    // zval *mux_array;
-    HashTable * persistent_list;
-    // zend_bool direction;
-ZEND_END_MODULE_GLOBALS(pux)
-
-#ifdef ZTS
-#define PUX_G(v) TSRMG(pux_globals_id, zend_pux_globals *, v)
-#else
-#define PUX_G(v) (pux_globals.v)
-#endif
-
-
 
 #define ZEND_HASH_FETCH(hash,key,ret) \
     zend_hash_find(hash, key, sizeof(key), (void**)&ret) == SUCCESS
@@ -86,8 +75,6 @@ extern zend_class_entry *ce_pux_exception;
 extern zend_module_entry pux_module_entry;
 
 void pux_init_exception(TSRMLS_D);
-
-void pux_mux_le_hash_dtor(zend_rsrc_list_entry *rsrc TSRMLS_DC);
 
 #define phpext_pux_ptr &pux_module_entry
 

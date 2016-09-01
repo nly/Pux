@@ -1,183 +1,56 @@
 Pux
 =============
-Pux is a high performance PHP router.
+Pux is a faster PHP router, it also includes out-of-box controller helpers.
 
-Pux is 48.5x faster than symfony router in static route dispatching, 31x faster in regular expression dispatching. (with pux extension installed)
+[![Latest Stable Version](https://poser.pugx.org/corneltek/pux/v/stable)](https://packagist.org/packages/corneltek/pux) 
+[![Total Downloads](https://poser.pugx.org/corneltek/pux/downloads)](https://packagist.org/packages/corneltek/pux) 
+[![Latest Unstable Version](https://poser.pugx.org/corneltek/pux/v/unstable)](https://packagist.org/packages/corneltek/pux) 
+[![License](https://poser.pugx.org/corneltek/pux/license)](https://packagist.org/packages/corneltek/pux)
 
-(Benchmark code and details here https://github.com/c9s/router-benchmark/blob/master/code)
+**2.0 Branch Build Status** *(This branch is under development)*
 
-Pux tries not to consume computation time to build all routes dynamically (like
-Symfony/Routing, although the RouteCompiler of Symfony/Routing caches the
-compiled patterns, but there are still a lot of function call and class
-loading from your application code. however, function calls are pretty slow in PHP). 
+[![Coverage Status](https://coveralls.io/repos/c9s/Pux/badge.svg?branch=2.0&service=github)](https://coveralls.io/github/c9s/Pux?branch=2.0) [![Build Status](https://travis-ci.org/c9s/Pux.svg?branch=master)](https://travis-ci.org/c9s/Pux)
 
-<!--
-[![Build Status](https://travis-ci.org/c9s/Pux.png?branch=master)](https://travis-ci.org/c9s/Pux)
--->
-
-Why It's Faster
----------------
-
-- Pux uses simpler data structure (indexed array) to store the patterns and flags.
-    (In PHP internals, `zend_hash_index_find` is faster than `zend_hash_find`).
-
-- When matching routes, symfony uses a lot of function calls for each route:
-
-    https://github.com/symfony/Routing/blob/master/Matcher/UrlMatcher.php#L124
-
-    Pux fetches the pattern from an indexed-array:
-
-    https://github.com/c9s/Pux/blob/master/src/Pux/Mux.php#L189
-
-- Even you enabled APC or other bytecode cache extension, you are still calling
-  methods and functions in the runtime. Pux reduces the route building to one
-  static method call. `__set_state`.
-
-- Pux separates static routes and dynamic routes automatically, Pux uses hash
-  table to look up static routes without looping the whole route array.
-
-- Pux\\Mux is written in C extension, method calls are faster!
-
-- With C extension, there is no class loading overhead.
-
-- Pux compiles your routes to plain PHP array, the compiled routes can be
-  loaded very fast. you don't need to call functions to register your routes before using it.
-
-
-Why It's Here
+Benchmark
 --------------------
-Most of us use a lot of machines to run our applications, however, it uses too much energy and too many resources.
-
-By using Pux, you can also decrease your expense of servers on cloud.
-
-Also we believe that running softwares on slower machines should be easy as possible.
-
-Some people thinks routing is not the bottleneck, the truth is this project
-does not claim routing is the bottleneck.
-
-Actually the bottleneck is always different in different applications, if you
-have a lot of heavy db requests, then your bottleneck is your db; if you have a
-lot of complex computation, then the bottleneck should be your algorithm.
-
-You might start wondering since the bottleneck is not routing, why do we
-implement route dispatcher in C extension? The answer is simple, if you put a
-pure PHP routing component with some empty callbacks and use apache benchmark
-tool to see how many requests you can handle per second, you will find out the
-routing component consumes a lot of computation time and the request number
-will decrease quite a few. (and it does nothing, all it does is ... just
-routing!)
-
-So Pux reduces the overheads of loading PHP classes and the runtime
-method/function calls, and you can run your application faster without the overheads.
+- See <https://github.com/tyler-sommer/php-router-benchmark> for details
 
 
-Features
+FEATURES
 --------------------
 
-- Zero dependency.
 - Low memory footprint (only 6KB with simple routes and extension installed) .
-- High performance of dispatching routes.
+- Low overhead.
 - PCRE pattern path support. (Sinatra-style syntax)
-- Request method condition support.
-- Domain condition support.
-- HTTPS condition support.
 - Controller auto-mounting - you mount a controller automatically without specifying paths for each action.
 - Controller annotation support - you may override the default path from controller through the annotations.
 - Route with optional pattern.
+- Request constraints
+  - Request method condition support.
+  - Domain condition support.
+  - HTTPS condition support.
 
-Pros & Cons of Grouped Pattern Matchting Strategy
-----------------------------------------
-An idea of matching routes is to combine all patterns into one pattern and
-compare the given path with `pcre_match` in one time.
-
-However this approach does not work if you have optional group or named
-capturing group, the `pcre_match` can not return detailed information about
-what pattern is matched if you use one of them.
-
-And since you compile all patterns into one, you can't compare with other same
-patterns with different conditions, for example:
-
-    /users  # GET
-    /users  # POST
-    /users  # with HTTP_HOST=somedomain
-
-The trade off in Pux is to compare routes in sequence because the same pattern
-might be in different HTTP method or different host name.
-
-The best approach is to merge & compile the regexp patterns into a FSM (Finite
-state machine), complex conditions can also be merged into this FSM, and let
-this FSM to dispatch routes. And this is the long-term target of Pux.
-
-
-Routing Path Format
----------------------
-
-Static route:
-
-    /post
-
-PCRE route:
-
-    /post/:id                  => matches /post/33
-
-PCRE route with optional pattern:
-
-    /post/:id(/:title)         => matches /post/33, /post/33/post%20title
-    /post/:id(\.:format)       => matches /post/33, /post/33.json .. /post/33.xml
-
-Requirement
+REQUIREMENT
 --------------
 
-- PHP 5.4.x
-- PHP 5.5.x
+- PHP 5.4+
 
-Installation
+
+INSTALLATION
 --------------------
-You can install Pux with composer by defining the following requirement in your composer.json:
-
-```json
-{
-    "require": {
-        "corneltek/pux": "~1.5"
-    }
-}
-```
-
-
-
-### Install Extension
-
-To install pux extension to boost the performance:
 
 ```sh
-git clone https://github.com/c9s/Pux.git
-cd Pux/ext
-phpize
-./configure
-make && make install
+composer require corneltek/pux "2.0.x-dev"
 ```
 
-Or you can configure the optimization flag to gain more when running `configure` command.:
-
-```sh
-CFLAGS="-O3" ./configure
-```
-
-Then setup your php.ini config to load pux extension:
-
-```ini
-extension=pux.so
-```
-
-
-Synopsis
-------------
+SYNOPSIS
+--------
 
 The routing usage is dead simple:
 
 ```php
 require 'vendor/autoload.php'; // use PCRE patterns you need Pux\PatternCompiler class.
-use Pux\Executor;
+use Pux\RouteExecutor;
 
 class ProductController {
     public function listAction() {
@@ -201,90 +74,53 @@ $mux->delete('/product/:id', ['ProductController','deleteAction'] , [
     'require' => [ 'id' => '\d+', ],
     'default' => [ 'id' => '1', ]
 ]);
-$route = $mux->dispatch('/product/1');
-Executor::execute($route);
+
+// If you use ExpandableController, it will automatically expands your controller actions into a sub-mux
+$mux->mount('/page', new PageController);
+
+$submux = new Pux\Mux;
+$submux->any('/bar');
+$mux->mount('/foo',$submux); // mount as /foo/bar
+
+// RESTful Mux Builder
+$builder = new RESTfulMuxBuilder($mux, [ 'prefix' => '/=' ]);
+$builder->addResource('product', new ProductResourceController); // expand RESTful resource point at /=/product
+$mux = $builder->build();
+
+
+if ($route = $mux->dispatch('/product/1')) {
+    $response = RouteExecutor::execute($route);
+
+    $responder = new Pux\Responder\SAPIResponder();
+    // $responder->respond([ 200, [ 'Content-Type: text/plain' ], 'Hello World' ]);
+    $responder->respond($response);
+}
 ```
 
-
-Examples
---------------------
-
-### Basic Example
-
-```php
-require 'vendor/autoload.php';
-use Pux\Mux;
-use Pux\Executor;
-$mux = new Mux;
-$mux->get('/get', ['HelloController','helloAction']);
-$mux->post('/post', ['HelloController','helloAction']);
-$mux->put('/put', ['HelloController','helloAction']);
-
-$mux->mount('/hello', new HelloController);
-
-$route = $mux->dispatch( $_SERVER['PATH_INFO'] );
-echo Executor::execute($route);
-```
-
-### Through Compiled Mux
-
-Define your routing definition in `routes.php`:
-
-```php
-require 'vendor/autoload.php';
-use Pux\Mux;
-$mux = new Mux;
-$mux->get('/get', ['HelloController','helloAction']);
-return $mux;
-```
-
-Run pux command to compile your routing definition:
-
-```sh
-curl -O https://raw.github.com/c9s/Pux/master/pux
-chmod +x pux
-pux compile -o mux.php routes.php
-```
-
-Load the mux object from your application code:
-
-```php
-require 'vendor/autoload.php';
-$mux = require 'mux.php';
-$route = $mux->dispatch( $_SERVER['PATH_INFO'] );
-echo Executor::execute($route);
-```
-
-> Please note that if you need PCRE pattern support for route, you must load `Pux/PatternCompiler.php` before you use.
 
 Mux
------
+---
 Mux is where you define your routes, and you can mount multiple mux to a parent one.
 
 ```php
 $mainMux = new Mux;
-$mainMux->expand = true;
 
 $pageMux = new Mux;
-$pageMux->add('/page1', [ 'PageController', 'page1' ]);
-$pageMux->add('/page2', [ 'PageController', 'page2' ]);
+$pageMux->any('/page1', [ 'PageController', 'page1' ]);
+$pageMux->any('/page2', [ 'PageController', 'page2' ]);
 
 // short-hand syntax
-$pageMux->add('/page2', 'PageController:page2'  );
+$pageMux->any('/page2', 'PageController:page2'  );
 
 $mainMux->mount('/sub', $pageMux);
 
 foreach( ['/sub/page1', '/sub/page2'] as $p ) {
-    $r = $mainMux->dispatch($p);
-    ok($r, "Matched route for $p");
+    $route = $mainMux->dispatch($p);
+
+    // The $route contains [ pcre (boolean), path (string), callback (callable), options (array) ]
+    list($pcre, $path, $callback, $options) = $route;
 }
 ```
-
-The `expand` option means whether to expand/merge submux routes to the parent mux.
-
-When expand is enabled, it improves dispatch performance when you
-have a lot of sub mux to dispatch.
-
 
 ### Methods
 
@@ -333,6 +169,36 @@ When expand is disabled, the pattern comparison strategy for
 strings will match the prefix.
 
 
+RouteRequest
+-------------------------
+
+RouteRequest maintains the information of the current request environment, it
+also provides some constraint checking methods that helps you to identify a
+request, e.g.:
+
+```php
+if ($request->queryStringMatch(...)) {
+
+}
+if ($request->hostEqual('some.dev')) {
+
+}
+if ($request->pathEqual('/foo/bar')) {
+
+}
+```
+
+
+```php
+use Pux\Environment;
+$env = Environment::createFromGlobals();
+$request = RouteRequest::createFromEnv($env);
+
+if ($route = $mux->dispatchRequest($request)) {
+
+}
+```
+
 
 APCDispatcher
 ----------------------
@@ -350,22 +216,6 @@ $dispatcher = new APCDispatcher($mux, array(
 $route = $dispatcher->dispatch('/request/uri');
 var_dump($route);
 ```
-
-Persistent Dispatcher
----------------------
-Rather than reload the mux object from php file everytime (or load from APC), there still a lot of overhead. 
-
-Pux provides a persistent way to dispatch your route and keep the routes array in the persistent memory:
-
-```php
-$r = pux_persistent_dispatch('hello', 'hello_mux.php', '/hello');
-```
-
-> Please note that the `hello_mux.php` must be a compiled mux PHP file.
-> The `pux_persistent_dispatch` is only available in extension.
-
-> NOTE: persistent dispatching is still in beta status.
-
 
 Controller
 --------------------
@@ -438,9 +288,9 @@ will restrict it to the provided method.
   in another instance of `\Pux\Mux`.
 
 
-Route Executor
+Route RouteExecutor
 --------------------
-`Pux\Executor` executes your route by creating the controller object, and
+`Pux\RouteExecutor` executes your route by creating the controller object, and
 calling the controller action method.
 
 Route executor take the returned route as its parameter, you simply pass the
@@ -449,11 +299,11 @@ route to executor the controller and get the execution result.
 Here the simplest example of the usage:
 
 ```php
-use Pux\Executor;
+use Pux\RouteExecutor;
 $mux = new Pux\Mux;
 $mux->any('/product/:id', ['ProductController','itemAction']);
 $route = $mux->dispatch('/product/1');
-$result = Executor::execute($route);
+$result = RouteExecutor::execute($route);
 ```
 
 You can also define the arguments to the controller's constructor method:
@@ -469,43 +319,14 @@ class ProductController extends Pux\Controller {
     }
 }
 
-use Pux\Executor;
+use Pux\RouteExecutor;
 $mux = new Pux\Mux;
 $mux->any('/product/:id', ['ProductController','itemAction'], [ 
     'constructor_args' => [ 'param1', 'param2' ],
 ]);
 $route = $mux->dispatch('/product/1');
-$result = Executor::execute($route); // returns "Product 1"
+$result = RouteExecutor::execute($route); // returns "Product 1"
 ```
-
-MuxCompiler
---------------------
-
-In your route definition file `hello_routes.php`, you simply return the Mux object at the end of file:
-
-```php
-<?php
-// load your composer autoload if it's needed
-// require '../vendor/autoload.php';
-use Pux\Mux;
-$mux = new Mux;
-$mux->get('/hello', ['HelloController','helloAction']);
-return $mux;
-```
-
-Pux provides a command-line tool for you to compile your route definitions.
-
-    pux compile -o hello_mux.php hello_routes.php
-
-In your application, you may load the compiled mux (router) through only one line:
-
-```php
-<?php
-$mux = require "hello_mux.php";
-$route = $mux->dispatch('/hello');
-```
-
-This can be very very fast if you have pux extension installed.
 
 Dispatching Strategy
 --------------------
@@ -532,119 +353,125 @@ routes to cache.
 Pux uses indexed array as the data structure for storing route information so it's faster.
 
 
+Routing Path Format
+---------------------
 
-## Benchmarks
+Static route:
 
-Testing with route dispatch only. (no controller)
+    /post
 
-Hardware:
+PCRE route:
 
-- iMac Mid 2011
-- Processor  2.5 GHz Intel Core i5
-- Memory  12 GB 1333 MHz DDR3
-- Software  OS X 10.9.1 (13B42)
+    /post/:id                  => matches /post/33
 
-Environment:
+PCRE route with optional pattern:
 
-- PHP 5.5.6 + APC
-
-
-### Dispatch Speed
-
-With one static route:
-
-    n=10000
-    Running pux extension (dispatch) - . 97487.768426386/s
-    Running symfony/routing (dispatch) - . 2456.3512428418/s
-    
-                                    Rate   Mem pux extension (dispatch) symfony/routing (dispatch)
-      pux extension (dispatch)  97.49K/s    0B                       --                        -2%
-    symfony/routing (dispatch)   2.46K/s  524K                    3968%                         --
-    
-    
-    ================================== Bar Chart ==================================
-    
-        pux extension (dispatch)  97.49K/s | ████████████████████████████████████████████████████████████  |
-      symfony/routing (dispatch)   2.46K/s | █                                                             |
-    
-    
-    ============================== System Information ==============================
-    
-    PHP Version: 5.5.6
-    CPU Brand String: Intel(R) Core(TM) i5-3427U CPU @ 1.80GHz
-    
-    With XDebug Extension.
-
-With one pcre route:
-
-    n=5000
-    Running pux extension (dispatch) - . 68264.888935184/s
-    Running symfony/routing (dispatch) - . 2245.5539220463/s
-    
-                                    Rate   Mem pux extension (dispatch) symfony/routing (dispatch)
-      pux extension (dispatch)  68.26K/s    3M                       --                        -3%
-    symfony/routing (dispatch)   2.25K/s  786K                    3040%                         --
-    
-    
-    ================================== Bar Chart ==================================
-    
-        pux extension (dispatch)  68.26K/s | ████████████████████████████████████████████████████████████  |
-      symfony/routing (dispatch)   2.25K/s | █                                                             |
-    
-    
-    ============================== System Information ==============================
-    
-    PHP Version: 5.5.6
-    CPU Brand String: Intel(R) Core(TM) i5-3427U CPU @ 1.80GHz
+    /post/:id(/:title)         => matches /post/33, /post/33/post%20title
+    /post/:id(\.:format)       => matches /post/33, /post/33.json .. /post/33.xml
 
 
-Compare to other PHP routers (test code: <https://github.com/c9s/router-benchmark/blob/master/code/dispatch.php> ):
-
-<pre>
-n=10000
-Runing php array - . 138796.45654569/s
-Runing pux - . 124982.98519026/s
-Runing klein - . 1801.5070399717/s
-Runing ham - . 13566.734991391/s
-Runing aura - . 39657.986477172/s
-Runing symfony/routing - . 1934.2415677861/s
-
-                     Rate   Mem php array pux aura ham symfony/routing klein
-      php array  138.8K/s    0B        ---90% -28% -9%             -1%   -1%
-            pux 124.98K/s    0B      111%  -- -31%-10%             -1%   -1%
-           aura  39.66K/s    0B      349%315%   ---34%             -4%   -4%
-            ham  13.57K/s    0B     1023%921% 292%  --            -14%  -13%
-symfony/routing   1.93K/s  786K     7175%6461%2050%701%              --  -93%
-          klein    1.8K/s  262K     7704%6937%2201%753%            107%    --
 
 
-================================== Bar Chart ==================================
+## Q & A
 
-        php array  138.8K/s | ████████████████████████████████████████████████████████████  |
-              pux 124.98K/s | ██████████████████████████████████████████████████████        |
-             aura  39.66K/s | █████████████████                                             |
-              ham  13.57K/s | █████                                                         |
-  symfony/routing   1.93K/s |                                                               |
-            klein    1.8K/s |                                                               |
+### Why It's Faster
+
+- Pux uses simpler data structure (indexed array) to store the patterns and flags.
+    (In PHP internals, `zend_hash_index_find` is faster than `zend_hash_find`).
+
+- When matching routes, symfony uses a lot of function calls for each route:
+
+    https://github.com/symfony/Routing/blob/master/Matcher/UrlMatcher.php#L124
+
+    Pux fetches the pattern from an indexed-array:
+
+    https://github.com/c9s/Pux/blob/master/src/Pux/Mux.php#L189
+
+- Even you enabled APC or other bytecode cache extension, you are still calling
+  methods and functions in the runtime. Pux reduces the route building to one
+  static method call. `__set_state`.
+
+- Pux separates static routes and dynamic routes automatically, Pux uses hash
+  table to look up static routes without looping the whole route array.
+
+- Pux\\Mux is written in C extension, method calls are faster!
+
+- With C extension, there is no class loading overhead.
+
+- Pux compiles your routes to plain PHP array, the compiled routes can be
+  loaded very fast. you don't need to call functions to register your routes before using it.
 
 
-============================== System Information ==============================
+### Why It's Here
 
-PHP Version: 5.5.6
-CPU Brand String: Intel(R) Core(TM) i5-3427U CPU @ 1.80GHz
+Most of us use a lot of machines to run our applications, however, it uses too
+much energy and too many resources.
 
-With XDebug Extension.
-</pre>
+Some people thinks routing is not the bottleneck, the truth is this project
+does not claim routing is the bottleneck.
+
+Actually the "bottleneck" is always different in different applications, if you
+have a lot of heavy db requests, then your bottleneck is your db; if you have a
+lot of complex computation, then the bottleneck should be your algorithm.
+
+You might start wondering since the bottleneck is not routing, why do we
+implement route dispatcher in C extension? The answer is simple, if you put a
+pure PHP routing component with some empty callbacks and use apache benchmark
+tool to see how many requests you can handle per second, you will find out the
+routing component consumes a lot of computation time and the request number
+will decrease quite a few. (and it does nothing, all it does is ... just
+routing)
+
+Pux tries to reduce the overheads of loading PHP classes and the runtime
+method/function calls, and you can run your application faster without the
+overheads.
+
+### Pros & Cons of Grouped Pattern Matching Strategy
+
+An idea of matching routes is to combine all patterns into one pattern and
+compare the given path with `pcre_match` in one time.
+
+However this approach does not work if you have optional group or named
+capturing group, the `pcre_match` can not return detailed information about
+what pattern is matched if you use one of them.
+
+And since you compile all patterns into one, you can't compare with other same
+patterns with different conditions, for example:
+
+    /users  # GET
+    /users  # POST
+    /users  # with HTTP_HOST=somedomain
+
+The trade off in Pux is to compare routes in sequence because the same pattern
+might be in different HTTP method or different host name.
+
+The best approach is to merge & compile the regexp patterns into a FSM (Finite
+state machine), complex conditions can also be merged into this FSM, and let
+this FSM to dispatch routes. And this is the long-term target of Pux.
 
 
-### Through Apache
 
-Please see benchmark details here: <https://github.com/c9s/router-benchmark>
+
 
 
 ## Contributing
 
-Hacking Pux C extension:
+### Testing XHProf Middleware
+
+
+Define your XHPROF_ROOT in your `phpunit.xml`, you can copy `phpunit.xml.dist` to `phpunit.xml`,
+for example:
+
+```xml
+  <php>
+    <env name="XHPROF_ROOT" value="/Users/c9s/src/php/xhprof"/>
+  </php>
+```
+
+
+
+
+### Hacking Pux C extension
 
 1. Discuss your main idea on GitHub issue page.
 

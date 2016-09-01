@@ -1,21 +1,37 @@
 {
-    "name": "corneltek\/pux",
-    "description": "Fast PHP router",
+    "name": "corneltek/pux",
+    "description": "The fast PHP router",
+    "homepage": "https://github.com/c9s/Pux",
+    "keywords": [
+        "pux",
+        "router",
+        "http",
+        "middleware",
+        "server",
+        "fast"
+    ],
     "authors": [
         {
             "name": "c9s",
             "email": "cornelius.howl@gmail.com"
         }
     ],
+    "require": {
+        "phpsgi/phpsgi": "dev-master",
+        "corneltek/universal": "^1.8"
+    },
+    "license": "MIT",
     "require-dev": {
-        "corneltek\/phpunit-testmore": "dev-master",
-        "corneltek\/cliframework": "dev-master",
-        "corneltek\/universal": "dev-master"
+        "willdurand/negotiation": "^1.4",
+        "corneltek/phpunit-testmore": "dev-master",
+        "willdurand/geocoder": "^3.1"
     },
     "autoload": {
-        "psr-0": {
-            "Pux": "src"
+        "psr-4": {
+            "Pux\\": "src/Pux/"
         }
     },
-    "version": "1.5.2"
+    "extra": {
+        "branch-alias": { "dev-master": "2.0.x-dev" }
+    }
 }
